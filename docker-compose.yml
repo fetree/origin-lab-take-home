@@ -26,14 +26,19 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/sessions
     volumes:
       - ./backend:/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   client:
     build: ./client
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       - API_URL=http://backend:8000
-    profiles: ["simulator"]
     command: ["--scenario", "${SCENARIO:-happy_path}", "--api-url", "http://backend:8000", "--speed", "${SPEED:-10}"]
 
 volumes:

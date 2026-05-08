@@ -4,39 +4,27 @@
 
 - Docker & Docker Compose
 
-## Start the backend
+## Start everything
 
 ```bash
 docker-compose up --build
 ```
 
-This starts PostgreSQL and the backend API at `http://localhost:8000`. Migrations run automatically on startup.
+This starts PostgreSQL, the backend API, and the simulator in order. The simulator waits for the backend to be healthy before running.
 
-## Run the simulator
-
-In a separate terminal, pick a scenario:
+Default scenario is `happy_path`. Change it with `SCENARIO`:
 
 ```bash
-# Happy path — all streams succeed, session approved
-docker-compose --profile simulator run --rm client --scenario happy_path
-
-# Rejected — low FPS, audio clipping, high inactivity
-docker-compose --profile simulator run --rm client --scenario rejected
-
-# Pipeline failure — transcode fails mid-way
-docker-compose --profile simulator run --rm client --scenario pipeline_failure
-
-# Run all three sequentially
-docker-compose --profile simulator run --rm client --scenario all
+SCENARIO=rejected docker-compose up --build
+SCENARIO=pipeline_failure docker-compose up --build
+SCENARIO=all docker-compose up --build
 ```
 
-### Speed
-
-By default the simulator runs at 10× real-time (a 60s session finishes in ~6s). Adjust with `SPEED`:
+Simulation speed defaults to 10× real-time (a 60s session finishes in ~6s). Adjust with `SPEED`:
 
 ```bash
-SPEED=1 docker-compose --profile simulator run --rm client --scenario happy_path   # real-time
-SPEED=20 docker-compose --profile simulator run --rm client --scenario all         # very fast
+SPEED=1 docker-compose up --build    # real-time
+SPEED=20 docker-compose up --build   # very fast
 ```
 
 ## API
