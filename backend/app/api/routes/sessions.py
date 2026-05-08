@@ -1,0 +1,47 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_db
+from app.models.session import SessionStatus
+from app.schemas.session import SessionCreate, SessionListOut, SessionOut, SessionStatusUpdate, StatsOut
+from app.services import session_service
+
+router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+@router.post("", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
+async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)):
+    return await session_service.create_session(db, body)
+
+
+@router.get("", response_model=list[SessionListOut])
+async def list_sessions(
+    status: SessionStatus | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await session_service.list_sessions(db, status=status, limit=limit, offset=offset)
+
+
+@router.get("/stats", response_model=StatsOut)
+async def get_stats(db: AsyncSession = Depends(get_db)):
+    return await session_service.get_stats(db)
+
+
+@router.get("/{session_id}", response_model=SessionOut)
+async def get_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    session = await session_service.get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.patch("/{session_id}/status", response_model=SessionOut)
+async def update_status(session_id: uuid.UUID, body: SessionStatusUpdate, db: AsyncSession = Depends(get_db)):
+    session = await session_service.update_status(db, session_id, body.status)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
