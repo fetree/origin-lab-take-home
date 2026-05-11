@@ -1,6 +1,7 @@
+import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -13,11 +14,6 @@ router = APIRouter(prefix="/sessions", tags=["ingest"])
 
 @router.post("/{session_id}/stream", status_code=status.HTTP_204_NO_CONTENT)
 async def ingest_stream(session_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
-    """
-    Long-lived streaming ingest endpoint.
-    Client sends newline-delimited JSON (NDJSON) over the request body.
-    Each line is parsed and persisted as a stream event.
-    """
     buffer = b""
     async for chunk in request.stream():
         buffer += chunk
@@ -27,13 +23,37 @@ async def ingest_stream(session_id: uuid.UUID, request: Request, db: AsyncSessio
             if not line:
                 continue
             try:
-                import json
                 raw = json.loads(line)
             except Exception:
-                continue  # malformed line; skip
+                continue
+
             event = await ingestion_service.ingest_event(db, session_id, raw)
-            if event:
-                await realtime.publish(session_id, {"type": "event", "data": raw})
+            if not event:
+                continue
+
+            # Fetch updated health for this stream and broadcast both together.
+            # Dashboard detail view uses "event" to append to timeline and
+            # "health" to refresh the per-stream health card.
+            health = await ingestion_service.get_stream_health(db, session_id)
+            health_payload = [
+                {
+                    "stream": h.stream,
+                    "last_seen_at": h.last_seen_at.isoformat() if h.last_seen_at else None,
+                    "event_count": h.event_count,
+                    "error_count": h.error_count,
+                    "bytes_received": h.bytes_received,
+                }
+                for h in health
+            ]
+
+            await realtime.publish(session_id, {
+                "type": "event",
+                "stream": event.stream,
+                "seq": event.seq,
+                "received_at": event.received_at.isoformat(),
+                "data": raw,
+                "health": health_payload,
+            })
 
 
 @router.get("/{session_id}/events", response_model=list[StreamEventOut])

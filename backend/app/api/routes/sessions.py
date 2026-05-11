@@ -7,6 +7,7 @@ from app.api.deps import get_db
 from app.models.session import SessionStatus
 from app.schemas.session import SessionCreate, SessionListOut, SessionOut, SessionStatusUpdate, StatsOut
 from app.services import ingestion_service, session_service
+from app.services.realtime_service import realtime
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -16,9 +17,28 @@ async def _session_out(session, db: AsyncSession) -> SessionOut:
     return SessionOut.model_validate({**session.__dict__, "stream_health": health})
 
 
+def _session_global_payload(session) -> dict:
+    return {
+        "type": "session_updated",
+        "session_id": str(session.id),
+        "status": session.status.value,
+        "game_title": session.game_title,
+        "operator_name": session.operator_name,
+        "updated_at": session.updated_at.isoformat(),
+    }
+
+
 @router.post("", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)):
     session = await session_service.create_session(db, body)
+    await realtime.publish_global({
+        "type": "session_created",
+        "session_id": str(session.id),
+        "status": session.status.value,
+        "game_title": session.game_title,
+        "operator_name": session.operator_name,
+        "created_at": session.created_at.isoformat(),
+    })
     return await _session_out(session, db)
 
 
@@ -50,4 +70,5 @@ async def update_status(session_id: uuid.UUID, body: SessionStatusUpdate, db: As
     session = await session_service.update_status(db, session_id, body.status)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    await realtime.publish_global(_session_global_payload(session))
     return await _session_out(session, db)
