@@ -55,7 +55,7 @@ services:
       - API_URL=http://backend:8000
       - SCENARIO=${SCENARIO:-happy_path}
       - SPEED=${SPEED:-10}
-    command: ["--scenario", "${SCENARIO:-happy_path}", "--api-url", "http://backend:8000", "--speed", "${SPEED:-10}"]
+    command: ["--scenario", "${SCENARIO:-all}", "--api-url", "http://backend:8000", "--speed", "${SPEED:-10}"]
 
 volumes:
   postgres_data:

@@ -24,19 +24,19 @@ docker compose --profile simulator run --rm client
 
 **In Docker Desktop:** expand the project, find the **client** container, and click the **Play (▶)** button. Each click runs a new simulation.
 
-**Scenarios** (default: `happy_path`):
+**Scenarios** (default: `all`):
 
 | Scenario | What happens |
 |---|---|
+| `all` | Runs all three scenarios back-to-back |
 | `happy_path` | Uploading → processing → review → approved |
 | `rejected` | Degraded streams → quality fails → rejected |
 | `pipeline_failure` | Transcode fails at 45% → failed |
-| `all` | Runs all three back-to-back |
 
 ```bash
+SCENARIO=happy_path docker compose --profile simulator run --rm client
 SCENARIO=rejected docker compose --profile simulator run --rm client
 SCENARIO=pipeline_failure docker compose --profile simulator run --rm client
-SCENARIO=all docker compose --profile simulator run --rm client
 ```
 
 
