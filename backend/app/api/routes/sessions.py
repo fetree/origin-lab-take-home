@@ -90,4 +90,5 @@ async def update_status(session_id: uuid.UUID, body: SessionStatusUpdate, db: As
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     await realtime.publish_global(_session_global_payload(session))
+    await realtime.publish(session_id, {"type": "status_updated", "status": session.status.value})
     return await _session_out(session, db)

@@ -6,6 +6,7 @@ import { useSSE } from './useSSE'
 
 interface SSEDetailEvent {
   type: string
+  status?: string
   stream: string
   seq: number | null
   received_at: string
@@ -19,11 +20,31 @@ export function useSessionDetail(id: string) {
 
   useEffect(() => {
     fetchSession(id).then(setSession).catch(console.error)
-    fetchEvents(id).then(setEvents).catch(console.error)
+
+    Promise.all([
+      fetchEvents(id),
+      fetchEvents(id, 'review'),
+      fetchEvents(id, 'transcode'),
+    ]).then(([general, reviewEvts, transcodeEvts]) => {
+      const seen = new Set<string>()
+      const merged = [...general, ...reviewEvts, ...transcodeEvts].filter(e => {
+        const key = String(e.id)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setEvents(merged)
+    }).catch(console.error)
   }, [id])
 
   useSSE(sseUrl(`/sessions/${id}/stream`), (data: unknown) => {
     const msg = data as SSEDetailEvent
+
+    if (msg.type === 'status_updated') {
+      setSession(prev => prev ? { ...prev, status: msg.status as Session['status'] } : prev)
+      return
+    }
+
     if (msg.type !== 'event') return
 
     setSession(prev => (prev ? { ...prev, stream_health: msg.health } : prev))

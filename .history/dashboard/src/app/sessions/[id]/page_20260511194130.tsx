@@ -49,6 +49,7 @@ function FailureBanner({ status, events }: { status: string; events: StreamEvent
   if (status === 'failed') {
     const transcode = events.find(e => e.stream === 'transcode' && (e.payload as Record<string, unknown>).stage === 'failed')
     const error = transcode ? (transcode.payload as Record<string, unknown>).error as string : null
+    console.log('transcode')
     if (!error) return null
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm">

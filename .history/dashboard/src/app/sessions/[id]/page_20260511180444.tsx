@@ -4,7 +4,6 @@ import { useSessionDetail } from '@/hooks/useSessionDetail'
 import StreamHealthGrid from '@/components/StreamHealthGrid'
 import EventTimeline from '@/components/EventTimeline'
 import QualityMetrics from '@/components/QualityMetrics'
-import type { StreamEvent } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
   created:    'bg-gray-100 text-gray-600',
@@ -33,11 +32,12 @@ function MetadataValue({ value }: { value: unknown }) {
   return <span className="text-gray-800 font-mono">{String(value)}</span>
 }
 
-function FailureBanner({ status, events }: { status: string; events: StreamEvent[] }) {
+function FailureBanner({ status, events }: { status: string; events: import('@/types').StreamEvent[] }) {
   if (status === 'rejected') {
     const review = events.find(e => e.stream === 'review' && (e.payload as Record<string, unknown>).decision === 'rejected')
     const reason = review ? (review.payload as Record<string, unknown>).reason as string : null
     const category = review ? (review.payload as Record<string, unknown>).rejection_category as string : null
+    console.log(reason)
     if (!reason) return null
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm">
