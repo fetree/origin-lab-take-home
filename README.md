@@ -10,9 +10,9 @@
 docker compose up --build
 ```
 
-This starts PostgreSQL, the backend API, the Next.js dashboard, and the simulator. Open the dashboard at `http://localhost:3000`.
+This starts PostgreSQL, the backend API, the Next.js dashboard, and the simulator. Open the dashboard at `http://localhost:3000` — sessions will start appearing automatically.
 
-The simulator runs all three scenarios by default. To re-run it or run a specific scenario, click the **Play (▶)** button on the **client** container in Docker Desktop, or:
+To re-run the simulator or run a specific scenario, click the **Play (▶)** button on the **client** container in Docker Desktop, or:
 
 ```bash
 docker compose run --rm client
