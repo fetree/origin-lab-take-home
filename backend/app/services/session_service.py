@@ -45,10 +45,25 @@ async def list_sessions(
     return list(result.scalars().all())
 
 
+VALID_TRANSITIONS: dict[SessionStatus, set[SessionStatus]] = {
+    SessionStatus.created:    {SessionStatus.uploading, SessionStatus.failed},
+    SessionStatus.uploading:  {SessionStatus.processing, SessionStatus.paused, SessionStatus.failed},
+    SessionStatus.paused:     {SessionStatus.uploading, SessionStatus.failed},
+    SessionStatus.processing: {SessionStatus.review, SessionStatus.failed},
+    SessionStatus.review:     {SessionStatus.approved, SessionStatus.rejected},
+    SessionStatus.approved:   set(),
+    SessionStatus.rejected:   set(),
+    SessionStatus.failed:     set(),
+}
+
+
 async def update_status(db: AsyncSession, session_id: uuid.UUID, status: SessionStatus) -> Session | None:
     session = await get_session(db, session_id)
     if not session:
         return None
+    allowed = VALID_TRANSITIONS.get(session.status, set())
+    if status not in allowed:
+        raise ValueError(f"Invalid transition: {session.status.value} → {status.value}")
     session.status = status
     session.updated_at = datetime.now(timezone.utc)
     await db.commit()

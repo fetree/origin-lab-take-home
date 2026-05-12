@@ -1,22 +1,32 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.schemas.events import StreamEventOut
-from app.services import ingestion_service
+from app.services import ingestion_service, session_service
 from app.services.realtime_service import realtime
 
 router = APIRouter(prefix="/sessions", tags=["ingest"])
 
+MAX_BUFFER = 10 * 1024 * 1024  # 10 MB — drop connection if client sends no newlines
+
 
 @router.post("/{session_id}/stream", status_code=status.HTTP_204_NO_CONTENT)
 async def ingest_stream(session_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    session = await session_service.get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     buffer = b""
     async for chunk in request.stream():
         buffer += chunk
+
+        if len(buffer) > MAX_BUFFER:
+            raise HTTPException(status_code=400, detail="Buffer overflow: no newline received")
+
         while b"\n" in buffer:
             line, buffer = buffer.split(b"\n", 1)
             line = line.strip()
@@ -27,7 +37,13 @@ async def ingest_stream(session_id: uuid.UUID, request: Request, db: AsyncSessio
             except Exception:
                 continue
 
-            event = await ingestion_service.ingest_event(db, session_id, raw)
+            try:
+                event = await ingestion_service.ingest_event(db, session_id, raw)
+            except Exception as exc:
+                print(f"[ingest] error processing event for {session_id}: {exc}", flush=True)
+                await db.rollback()
+                continue
+
             if not event:
                 continue
 

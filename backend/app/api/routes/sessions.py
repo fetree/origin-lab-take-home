@@ -86,7 +86,10 @@ async def get_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 
 @router.patch("/{session_id}/status", response_model=SessionOut)
 async def update_status(session_id: uuid.UUID, body: SessionStatusUpdate, db: AsyncSession = Depends(get_db)):
-    session = await session_service.update_status(db, session_id, body.status)
+    try:
+        session = await session_service.update_status(db, session_id, body.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     await realtime.publish_global(_session_global_payload(session))
