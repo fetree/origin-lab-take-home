@@ -1,8 +1,6 @@
 """
-Pipeline failure: upload succeeds but transcode fails mid-way
-(FFmpeg moov atom error). Session ends in 'failed' state.
+Pipeline failure: uploading → processing → failed (transcode error at 45%)
 """
-
 from simulator.streams.audio import audio_stream
 from simulator.streams.camera import camera_stream
 from simulator.streams.input_events import input_stream
@@ -31,21 +29,24 @@ SESSION_PAYLOAD = {
 async def run(api_url: str, speed: float = 10.0) -> None:
     print("[pipeline_failure] Creating session …")
     session_id = await transport.create_session(api_url, SESSION_PAYLOAD)
-    print(f"[pipeline_failure] Session created: {session_id}")
+    print(f"[pipeline_failure] Session: {session_id}")
 
-    duration = 60.0
+    # Phase 1: uploading
+    print("[pipeline_failure] uploading …")
+    await transport.update_status(api_url, session_id, "uploading")
+    await transport.stream_events(api_url, session_id, merge(
+        lifecycle_stream(60.0, speed),
+        telemetry_stream(60.0, speed),
+        upload_stream(60.0, speed),
+        input_stream(60.0, speed, hz=60),
+        camera_stream(60.0, speed, hz=30),
+        audio_stream(60.0, speed),
+    ))
 
-    streams = merge(
-        lifecycle_stream(duration, speed),
-        telemetry_stream(duration, speed),
-        upload_stream(duration, speed),
-        input_stream(duration, speed, hz=60),
-        camera_stream(duration, speed, hz=30),
-        audio_stream(duration, speed),
-        transcode_stream(duration, speed, fail_at=45.0),  # fails at ~45% progress
-    )
+    # Phase 2: processing — transcode fails at 45%
+    print("[pipeline_failure] processing …")
+    await transport.update_status(api_url, session_id, "processing")
+    await transport.stream_events(api_url, session_id, transcode_stream(30.0, speed, fail_at=45.0))
 
-    print("[pipeline_failure] Streaming events …")
-    await transport.stream_events(api_url, session_id, streams)
     await transport.update_status(api_url, session_id, "failed")
     print("[pipeline_failure] Done — session failed (transcode error).")

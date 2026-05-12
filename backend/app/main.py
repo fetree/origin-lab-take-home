@@ -12,9 +12,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(realtime.router)
 app.include_router(sessions.router)
 app.include_router(ingest.router)
-app.include_router(realtime.router)
 
 
 @app.get("/health")

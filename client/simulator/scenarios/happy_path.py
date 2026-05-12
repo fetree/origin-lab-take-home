@@ -1,10 +1,7 @@
 """
-Happy path: all streams active, upload succeeds, transcode completes,
-quality passes, reviewer approves.
+Happy path: uploading → processing → review → approved
 """
-
 import asyncio
-
 from simulator.streams.audio import audio_stream
 from simulator.streams.camera import camera_stream
 from simulator.streams.input_events import input_stream
@@ -38,23 +35,32 @@ SESSION_PAYLOAD = {
 async def run(api_url: str, speed: float = 10.0) -> None:
     print("[happy_path] Creating session …")
     session_id = await transport.create_session(api_url, SESSION_PAYLOAD)
-    print(f"[happy_path] Session created: {session_id}")
+    print(f"[happy_path] Session: {session_id}")
 
-    duration = 60.0  # simulated seconds of capture
+    # Phase 1: uploading
+    print("[happy_path] uploading …")
+    await transport.update_status(api_url, session_id, "uploading")
+    await transport.stream_events(api_url, session_id, merge(
+        lifecycle_stream(60.0, speed),
+        telemetry_stream(60.0, speed),
+        upload_stream(60.0, speed),
+        input_stream(60.0, speed, hz=60),
+        camera_stream(60.0, speed, hz=30),
+        audio_stream(60.0, speed),
+    ))
 
-    streams = merge(
-        lifecycle_stream(duration, speed),
-        telemetry_stream(duration, speed),
-        upload_stream(duration, speed),
-        input_stream(duration, speed, hz=60),
-        camera_stream(duration, speed, hz=30),
-        audio_stream(duration, speed),
-        transcode_stream(duration, speed),
+    # Phase 2: processing (transcode)
+    print("[happy_path] processing …")
+    await transport.update_status(api_url, session_id, "processing")
+    await transport.stream_events(api_url, session_id, transcode_stream(30.0, speed))
+
+    # Phase 3: review
+    print("[happy_path] review …")
+    await transport.update_status(api_url, session_id, "review")
+    await transport.stream_events(api_url, session_id, merge(
         quality_stream(speed=speed),
         review_stream("approved", speed=speed),
-    )
+    ))
 
-    print("[happy_path] Streaming events …")
-    await transport.stream_events(api_url, session_id, streams)
     await transport.update_status(api_url, session_id, "approved")
     print("[happy_path] Done — session approved.")
