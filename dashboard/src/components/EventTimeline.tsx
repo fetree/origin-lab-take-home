@@ -49,9 +49,11 @@ export default function EventTimeline({ events }: Props) {
   if (events.length === 0)
     return <p className="text-gray-400 text-sm">Waiting for events…</p>
 
+  const ordered = [...events].reverse()
+
   return (
     <div className="overflow-y-auto max-h-96 space-y-1 font-mono text-xs">
-      {events.map((e, i) => (
+      {ordered.map((e, i) => (
         <div key={`${e.id}-${i}`} className="flex items-start gap-2 py-0.5">
           <span className="text-gray-400 flex-shrink-0 w-20">{fmtTime(e.received_at)}</span>
           <span className={`px-1.5 py-0.5 rounded text-xs flex-shrink-0 ${STREAM_BADGE[e.stream] ?? 'bg-gray-100 text-gray-600'}`}>
