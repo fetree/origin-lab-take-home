@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.models.session import SessionStatus
+from app.models.stream_health import StreamHealth
 from app.schemas.session import SessionCreate, SessionListOut, SessionOut, SessionStatusUpdate, StatsOut
 from app.services import ingestion_service, session_service
 from app.services.realtime_service import realtime
@@ -54,7 +56,24 @@ async def list_sessions(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    return await session_service.list_sessions(db, status=status, limit=limit, offset=offset)
+    sessions = await session_service.list_sessions(db, status=status, limit=limit, offset=offset)
+    if not sessions:
+        return []
+
+    # Batch-fetch stream health for all sessions in one query
+    session_ids = [s.id for s in sessions]
+    health_rows = await db.execute(
+        select(StreamHealth).where(StreamHealth.session_id.in_(session_ids))
+    )
+    health_map: dict[str, list] = {}
+    for h in health_rows.scalars():
+        key = str(h.session_id)
+        health_map.setdefault(key, []).append(h)
+
+    return [
+        SessionListOut.model_validate({**s.__dict__, "stream_health": health_map.get(str(s.id), [])})
+        for s in sessions
+    ]
 
 
 @router.get("/{session_id}", response_model=SessionOut)

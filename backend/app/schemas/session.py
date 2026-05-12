@@ -54,6 +54,8 @@ class SessionListOut(BaseModel):
     resolution: str | None
     fps: int | None
     status: SessionStatus
+    streams: list[str] | None
+    stream_health: list[StreamHealthOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

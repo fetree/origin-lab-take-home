@@ -1,10 +1,12 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.session import Session, SessionStatus
+from app.models.stream_event import StreamEvent
+from app.models.stream_health import StreamHealth
 from app.schemas.session import SessionCreate, StatsOut
 
 
@@ -57,14 +59,25 @@ async def update_status(db: AsyncSession, session_id: uuid.UUID, status: Session
 async def get_stats(db: AsyncSession) -> StatsOut:
     total = await db.scalar(select(func.count()).select_from(Session))
 
-    rows = await db.execute(
-        select(Session.status, func.count()).group_by(Session.status)
-    )
+    rows = await db.execute(select(Session.status, func.count()).group_by(Session.status))
     by_status = {row[0].value: row[1] for row in rows}
+
+    # Events received in the last 10 seconds → events/sec
+    window_start = datetime.now(timezone.utc) - timedelta(seconds=10)
+    recent = await db.scalar(
+        select(func.count()).select_from(StreamEvent)
+        .where(StreamEvent.received_at >= window_start)
+    )
+    events_per_second = round((recent or 0) / 10.0, 2)
+
+    # Error rate: total errors across all streams / total events
+    total_events = await db.scalar(select(func.count()).select_from(StreamEvent)) or 1
+    total_errors = await db.scalar(select(func.sum(StreamHealth.error_count)).select_from(StreamHealth)) or 0
+    error_rate = round(total_errors / total_events, 4)
 
     return StatsOut(
         total_sessions=total or 0,
         by_status=by_status,
-        events_per_second=0.0,
-        error_rate=0.0,
+        events_per_second=events_per_second,
+        error_rate=error_rate,
     )
