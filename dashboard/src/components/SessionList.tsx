@@ -13,9 +13,13 @@ const STATUS_STYLES: Record<string, string> = {
   paused:     'bg-orange-100 text-orange-700',
 }
 
-function getHealth(health: StreamHealth[]): { label: string; dot: string } {
+const TERMINAL = new Set(['approved', 'rejected', 'failed'])
+
+function getHealth(health: StreamHealth[], status: string): { label: string; dot: string } {
   if (health.some(h => h.error_count > 0))
     return { label: 'Error', dot: 'bg-red-500' }
+  if (TERMINAL.has(status))
+    return { label: 'Completed', dot: 'bg-gray-400' }
   if (health.some(h => {
     if (!h.last_seen_at || h.event_count === 0) return false
     return Date.now() - new Date(h.last_seen_at).getTime() > 30_000
@@ -24,10 +28,6 @@ function getHealth(health: StreamHealth[]): { label: string; dot: string } {
   if (health.length === 0)
     return { label: 'No data', dot: 'bg-gray-300' }
   return { label: 'Healthy', dot: 'bg-green-500' }
-}
-
-function activeStreams(health: StreamHealth[]): number {
-  return health.filter(h => h.event_count > 0).length
 }
 
 function timeAgo(iso: string): string {
@@ -64,9 +64,8 @@ export default function SessionList({ sessions }: Props) {
         </thead>
         <tbody className="divide-y divide-gray-100">
           {sessions.map(s => {
-            const health = getHealth(s.stream_health)
-            const configured = s.streams?.length ?? 0
-            const active = activeStreams(s.stream_health)
+            const health = getHealth(s.stream_health, s.status)
+            const streamCount = s.stream_health.length
             return (
               <tr key={s.id} className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3 font-medium">
@@ -82,7 +81,7 @@ export default function SessionList({ sessions }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-600">
-                  {active}/{configured}
+                  {streamCount}
                 </td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-1.5">

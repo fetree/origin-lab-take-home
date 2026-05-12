@@ -86,7 +86,7 @@ export default function SessionDetailPage({ params }: Props) {
           Stream Health
           <span className="ml-2 text-gray-400 normal-case font-normal">live</span>
         </h3>
-        <StreamHealthGrid health={session.stream_health} />
+        <StreamHealthGrid health={session.stream_health} sessionStatus={session.status} />
       </section>
 
       {/* Quality Metrics */}

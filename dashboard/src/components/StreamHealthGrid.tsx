@@ -13,9 +13,13 @@ const STREAM_DOT: Record<string, string> = {
   review:       'bg-red-500',
 }
 
-function status(h: StreamHealth): { label: string; border: string; labelColor: string } {
+const TERMINAL = new Set(['approved', 'rejected', 'failed'])
+
+function status(h: StreamHealth, sessionStatus: string): { label: string; border: string; labelColor: string } {
   if (h.error_count > 0)
     return { label: 'Error', border: 'border-red-300', labelColor: 'text-red-600' }
+  if (TERMINAL.has(sessionStatus))
+    return { label: 'Completed', border: 'border-gray-200', labelColor: 'text-gray-400' }
   if (h.last_seen_at && h.event_count > 0) {
     const age = Date.now() - new Date(h.last_seen_at).getTime()
     if (age > 30_000)
@@ -39,16 +43,16 @@ function fmt(n: number): string {
   return String(n)
 }
 
-interface Props { health: StreamHealth[] }
+interface Props { health: StreamHealth[]; sessionStatus: string }
 
-export default function StreamHealthGrid({ health }: Props) {
+export default function StreamHealthGrid({ health, sessionStatus }: Props) {
   if (health.length === 0)
     return <p className="text-gray-400 text-sm">No stream data yet.</p>
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {health.map(h => {
-        const s = status(h)
+        const s = status(h, sessionStatus)
         return (
           <div key={h.stream} className={`bg-white border rounded-lg p-3 ${s.border}`}>
             <div className="flex items-center gap-2 mb-2">
