@@ -10,19 +10,13 @@
 docker compose up --build
 ```
 
-This starts PostgreSQL, the backend API, and the Next.js dashboard. Open the dashboard at `http://localhost:3000`.
+This starts PostgreSQL, the backend API, the Next.js dashboard, and the simulator. Open the dashboard at `http://localhost:3000`.
 
-You can also hit the **Play** button next to the project in Docker Desktop — it does the same thing. The simulator is not included so it won't run automatically.
-
-## Run the simulator
-
-Run it any time after the stack is up. Each run creates new sessions in the dashboard — you can run it as many times as you want.
+The simulator runs all three scenarios by default. To re-run it or run a specific scenario, click the **Play (▶)** button on the **client** container in Docker Desktop, or:
 
 ```bash
-docker compose --profile simulator run --rm client
+docker compose run --rm client
 ```
-
-**In Docker Desktop:** expand the project, find the **client** container, and click the **Play (▶)** button. Each click runs a new simulation.
 
 **Scenarios** (default: `all`):
 
@@ -34,15 +28,39 @@ docker compose --profile simulator run --rm client
 | `pipeline_failure` | Transcode fails at 45% → failed |
 
 ```bash
-SCENARIO=happy_path docker compose --profile simulator run --rm client
-SCENARIO=rejected docker compose --profile simulator run --rm client
-SCENARIO=pipeline_failure docker compose --profile simulator run --rm client
+SCENARIO=happy_path docker compose run --rm client
+SCENARIO=rejected docker compose run --rm client
+SCENARIO=pipeline_failure docker compose run --rm client
 ```
 
 ## API
 
 - Docs: `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
+
+## Tests
+
+Integration tests run against a real PostgreSQL database (`sessions_test`), which is created automatically on first `docker compose up --build`.
+
+Start the stack, then in a separate terminal:
+
+```bash
+docker compose exec backend pytest
+```
+
+To run a specific test file:
+
+```bash
+docker compose exec backend pytest tests/test_ingestion.py
+docker compose exec backend pytest tests/test_status_transitions.py
+docker compose exec backend pytest tests/test_sessions.py
+```
+
+To run with verbose output:
+
+```bash
+docker compose exec backend pytest -v
+```
 
 ---
 

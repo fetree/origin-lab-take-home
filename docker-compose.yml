@@ -5,8 +5,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sessions
+      POSTGRES_MULTIPLE_DATABASES: sessions,sessions_test
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - "5432:5432"
     healthcheck:
@@ -47,13 +49,12 @@ services:
 
   client:
     build: ./client
-    profiles: ["simulator"]
     depends_on:
       backend:
         condition: service_healthy
     environment:
       - API_URL=http://backend:8000
-      - SCENARIO=${SCENARIO:-happy_path}
+      - SCENARIO=${SCENARIO:-all}
       - SPEED=${SPEED:-10}
     command: ["--scenario", "${SCENARIO:-all}", "--api-url", "http://backend:8000", "--speed", "${SPEED:-10}"]
 
