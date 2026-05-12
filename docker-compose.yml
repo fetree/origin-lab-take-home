@@ -47,11 +47,14 @@ services:
 
   client:
     build: ./client
+    profiles: ["simulator"]
     depends_on:
       backend:
         condition: service_healthy
     environment:
       - API_URL=http://backend:8000
+      - SCENARIO=${SCENARIO:-happy_path}
+      - SPEED=${SPEED:-10}
     command: ["--scenario", "${SCENARIO:-happy_path}", "--api-url", "http://backend:8000", "--speed", "${SPEED:-10}"]
 
 volumes:

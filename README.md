@@ -2,30 +2,43 @@
 
 ## Prerequisites
 
-- Docker & Docker Compose
+- Docker Desktop
 
-## Start everything
+## Start the stack
 
 ```bash
 docker compose up --build
 ```
 
-This starts PostgreSQL, the backend API, and the simulator in order. The simulator waits for the backend to be healthy before running.
+This starts PostgreSQL, the backend API, and the Next.js dashboard. Open the dashboard at `http://localhost:3000`.
 
-Default scenario is `happy_path`. Change it with `SCENARIO`:
+You can also hit the **Play** button next to the project in Docker Desktop — it does the same thing. The simulator is not included so it won't run automatically.
 
-```bash
-SCENARIO=rejected docker compose up --build
-SCENARIO=pipeline_failure docker compose up --build
-SCENARIO=all docker compose up --build
-```
+## Run the simulator
 
-Simulation speed defaults to 10× real-time (a 60s session finishes in ~6s). Adjust with `SPEED`:
+Run it any time after the stack is up. Each run creates new sessions in the dashboard — you can run it as many times as you want.
 
 ```bash
-SPEED=1 docker compose up --build    # real-time
-SPEED=20 docker compose up --build   # very fast
+docker compose --profile simulator run --rm client
 ```
+
+**In Docker Desktop:** expand the project, find the **client** container, and click the **Play (▶)** button. Each click runs a new simulation.
+
+**Scenarios** (default: `happy_path`):
+
+| Scenario | What happens |
+|---|---|
+| `happy_path` | Uploading → processing → review → approved |
+| `rejected` | Degraded streams → quality fails → rejected |
+| `pipeline_failure` | Transcode fails at 45% → failed |
+| `all` | Runs all three back-to-back |
+
+```bash
+SCENARIO=rejected docker compose --profile simulator run --rm client
+SCENARIO=pipeline_failure docker compose --profile simulator run --rm client
+SCENARIO=all docker compose --profile simulator run --rm client
+```
+
 
 ## API
 
