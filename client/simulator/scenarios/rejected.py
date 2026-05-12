@@ -14,7 +14,7 @@ from simulator.streams.upload import upload_stream
 from simulator import transport
 
 SESSION_PAYLOAD = {
-    "game_title": "Squad",
+    "game_title": "CS:GO",
     "operator_name": "degraded_op",
     "resolution": "1920x1080",
     "fps": 60,
@@ -23,7 +23,7 @@ SESSION_PAYLOAD = {
     "system_metadata": {
         "hardware": {"cpu_model": "Intel Core i5-8600K", "gpu": "GTX 1060",
                      "ram_total_bytes": 17179869184, "os_version": "Windows 10"},
-        "game_name": "Squad", "encoder": "x264", "recorder_version": "2.3.0",
+        "game_name": "CS:GO", "encoder": "x264", "recorder_version": "2.3.0",
     },
 }
 
